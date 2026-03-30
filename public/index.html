@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkSmart | AI Parking Assistant</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Map Panel -->
+        <aside class="map-panel" id="mapPanel">
+            <div id="map"></div>
+            <div class="map-overlay">
+                <button id="refreshBtn" title="Refresh Data"><i class="fas fa-sync-alt"></i></button>
+                <div class="last-updated" id="lastUpdated">Last updated: Just now</div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-container">
+            <header class="app-header">
+                <div class="logo">
+                    <i class="fas fa-parking"></i>
+                    <h1>ParkSmart</h1>
+                </div>
+                <div class="status-badge" id="locationStatus">
+                    <span class="dot"></span> Searching for location...
+                </div>
+            </header>
+
+            <div class="chat-history" id="chatHistory">
+                <!-- Welcome Message -->
+                <div class="message bot-message">
+                    <div class="message-content">
+                        Hello! 🚗 I'm your Smart Parking Assistant. I can help you find available parking spots near your location. 
+                        <br><br>
+                        Try saying <strong>"Find parking near me"</strong>!
+                    </div>
+                </div>
+            </div>
+
+            <footer class="chat-footer">
+                <form id="chatForm" class="chat-input-area">
+                    <input type="text" id="userInput" placeholder="Type 'Find parking near me'..." required autocomplete="off">
+                    <button type="submit" id="sendBtn" title="Send message"><i class="fas fa-paper-plane"></i></button>
+                    <button type="button" id="geoBtn" title="Update my location"><i class="fas fa-location-arrow"></i></button>
+                </form>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="app.js"></script>
+</body>
+</html>
