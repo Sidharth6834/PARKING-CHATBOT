@@ -10,17 +10,41 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Helper function to calculate distance using Haversine formula
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of the Earth in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in km
+// KNN (K-Nearest Neighbors) Model to find closest parking spots
+class KNNModel {
+    constructor(k = 5) {
+        this.k = k;
+    }
+
+    // Helper function to calculate distance using Haversine formula
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Radius of the Earth in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Distance in km
+    }
+
+    findNearest(targetLocation, spotsData) {
+        // Calculate distance for all spots in the dataset
+        const distances = spotsData.map(spot => {
+            const distance = this.calculateDistance(
+                targetLocation.lat, targetLocation.lng, 
+                spot.latitude, spot.longitude
+            );
+            return { ...spot, distance: distance.toFixed(2) };
+        });
+
+        // Sort by distance (ascending) to find the nearest neighbors
+        distances.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+
+        // Return top K nearest spots
+        return distances.slice(0, this.k);
+    }
 }
 
 // API Endpoint to get real parking spots from OpenStreetMap Overpass API
@@ -52,7 +76,9 @@ app.get('/api/getParkingSpots', async (req, res) => {
             method: "POST",
             body: `data=${encodeURIComponent(overpassQuery)}`,
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": "ParkingLocatorApp/1.0",
+                "Accept": "application/json"
             }
         });
         
@@ -77,7 +103,6 @@ app.get('/api/getParkingSpots', async (req, res) => {
             // "node" has lat/lon, "way/relation" with "out center" has center.lat/center.lon
             const spotLat = place.lat || (place.center && place.center.lat);
             const spotLng = place.lon || (place.center && place.center.lon);
-            const distance = calculateDistance(lat, lng, spotLat, spotLng);
             const name = (place.tags && place.tags.name) ? place.tags.name : "Public Parking Area";
 
             return {
@@ -88,16 +113,16 @@ app.get('/api/getParkingSpots', async (req, res) => {
                 // Simulate real-time metrics
                 available_spots: Math.floor(Math.random() * 50) + 1, 
                 price_per_hour: (Math.random() * 10 + 2).toFixed(2),
-                distance: distance.toFixed(2),
                 last_updated: new Date().toLocaleTimeString()
             };
         });
 
-        // Ensure we sort by calculated distance closest to furthest
-        parsedSpots.sort((a, b) => a.distance - b.distance);
+        // Initialize KNN Model expecting 5 nearest neighbors
+        const knn = new KNNModel(5);
         
-        // Return top 5 closest
-        const topSpots = parsedSpots.slice(0, 5);
+        // Use the model to predict/find the nearest spots to user's location
+        const targetLocation = { lat: parseFloat(lat), lng: parseFloat(lng) };
+        const topSpots = knn.findNearest(targetLocation, parsedSpots);
 
         res.json({
             success: true,
