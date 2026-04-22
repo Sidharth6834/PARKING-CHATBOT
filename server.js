@@ -100,10 +100,25 @@ app.get('/api/getParkingSpots', async (req, res) => {
 
         // Map the results and simulate availability / pricing since OSM doesn't provide it
         const parsedSpots = data.elements.map((place, index) => {
-            // "node" has lat/lon, "way/relation" with "out center" has center.lat/center.lon
             const spotLat = place.lat || (place.center && place.center.lat);
             const spotLng = place.lon || (place.center && place.center.lon);
-            const name = (place.tags && place.tags.name) ? place.tags.name : "Public Parking Area";
+            const tags = place.tags || {};
+            const name = tags.name ? tags.name : "Public Parking Area";
+
+            // Pricing logic for India (approximate)
+            let price = 0;
+            if (tags.fee === 'no') {
+                price = 0;
+            } else if (tags.charge) {
+                // Extract numeric value from charge string if possible
+                const match = tags.charge.match(/\d+/);
+                price = match ? parseInt(match[0]) : 30;
+            } else {
+                // Heuristic: paid parking usually ₹20-₹60, unknown/street ₹10-₹30
+                price = tags.fee === 'yes' 
+                    ? Math.floor(Math.random() * 41) + 20 
+                    : Math.floor(Math.random() * 21) + 10;
+            }
 
             return {
                 id: place.id || index + 1,
@@ -111,8 +126,8 @@ app.get('/api/getParkingSpots', async (req, res) => {
                 latitude: spotLat,
                 longitude: spotLng,
                 // Simulate real-time metrics
-                available_spots: Math.floor(Math.random() * 50) + 1, 
-                price_per_hour: (Math.random() * 10 + 2).toFixed(2),
+                available_spots: Math.floor(Math.random() * 60) + 5, 
+                price_per_hour: price,
                 last_updated: new Date().toLocaleTimeString()
             };
         });

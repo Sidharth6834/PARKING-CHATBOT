@@ -157,7 +157,7 @@ function displayParkingResults(spots) {
                 </div>
                 <div class="card-footer">
                     <span class="available-badge">${spot.available_spots} spots left</span>
-                    <span class="price">$${spot.price_per_hour}/hr</span>
+                    <span class="price">${spot.price_per_hour === 0 ? 'Free' : '₹' + spot.price_per_hour + '/hr'}</span>
                 </div>
             </div>
         `;
@@ -177,7 +177,7 @@ function updateMapMarkers(spots) {
 
     spots.forEach(spot => {
         const marker = L.marker([spot.latitude, spot.longitude]).addTo(map)
-            .bindPopup(`<b>${spot.name}</b><br>${spot.available_spots} spots available<br>$${spot.price_per_hour}/hr`);
+            .bindPopup(`<b>${spot.name}</b><br>${spot.available_spots} spots available<br>${spot.price_per_hour === 0 ? 'Free' : '₹' + spot.price_per_hour + '/hr'}`);
         parkingMarkers.push(marker);
         bounds.extend([spot.latitude, spot.longitude]);
     });
