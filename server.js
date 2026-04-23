@@ -1,10 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
 app.use(cors());
 app.use(express.json());
@@ -46,6 +51,48 @@ class KNNModel {
         return distances.slice(0, this.k);
     }
 }
+
+// Gemini Chat Endpoint
+app.post('/api/chat', async (req, res) => {
+    const { message, location } = req.body;
+
+    if (!message) {
+        return res.status(400).json({ error: "Message is required." });
+    }
+
+    try {
+        const prompt = `
+            You are ParkSmart AI, a helpful parking assistant. 
+            The user says: "${message}"
+            Current user coordinates: ${location ? JSON.stringify(location) : "Unknown"}
+
+            Your task:
+            1. If the user wants to find parking, respond with JSON format: {"intent": "find_parking", "location": "location name or 'near me'", "reply": "A helpful response"}.
+            2. If the user is just chatting (greeting, thanking, etc.), respond with JSON: {"intent": "chat", "reply": "Your conversational response"}.
+            3. If they ask for parking "near me" and the coordinates are known, use "near me".
+            4. Keep the 'reply' short and friendly.
+            
+            Return ONLY the JSON.
+        `;
+
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text();
+        
+        // Clean the response in case Gemini adds markdown backticks
+        const cleanJson = responseText.replace(/```json|```/g, "").trim();
+        const aiResponse = JSON.parse(cleanJson);
+
+        res.json({
+            success: true,
+            intent: aiResponse.intent,
+            extracted_location: aiResponse.location,
+            reply: aiResponse.reply
+        });
+    } catch (error) {
+        console.error("Gemini Error:", error.message);
+        res.status(500).json({ error: "Failed to process message with AI." });
+    }
+});
 
 // API Endpoint to get real parking spots from OpenStreetMap Overpass API
 app.get('/api/getParkingSpots', async (req, res) => {
@@ -194,9 +241,10 @@ app.get('/api/geocode', async (req, res) => {
 // Export the Express API
 module.exports = app;
 
-// Start the server only if run locally
-if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`Server running at http://localhost:${PORT}`);
-    });
-}
+// Start the server
+app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+});
+
+// Keep the process alive for the demo
+setInterval(() => {}, 60000);

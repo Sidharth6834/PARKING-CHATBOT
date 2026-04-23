@@ -186,32 +186,48 @@ function updateMapMarkers(spots) {
 }
 
 // Event Listeners
-document.getElementById('chatForm').addEventListener('submit', (e) => {
+document.getElementById('chatForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = document.getElementById('userInput');
-    const query = input.value.trim().toLowerCase();
+    const userMessage = input.value.trim();
     
-    if (!query) return;
+    if (!userMessage) return;
 
-    addMessage(input.value, true);
+    // Display user message
+    addMessage(userMessage, true);
     input.value = '';
 
-    // Enhanced Intent Detection for "Near" locations
-    if (query.includes('parking') || query.includes('find')) {
-        // Did they specify a location using "near [name]" or "in [name]"?
-        const match = query.match(/(?:near|in|at)\s+(.+)/);
-        
-        if (match && match[1].trim() && match[1].trim() !== 'me') {
-            const locationStr = match[1].trim();
-            findParkingForLocation(locationStr);
+    try {
+        // Send message to Gemini-powered backend
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                message: userMessage,
+                location: currentCoords 
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Display AI's friendly reply
+            addBotMessage(data.reply);
+
+            // If Gemini detected a parking intent, proceed to find parking
+            if (data.intent === 'find_parking') {
+                if (data.extracted_location === 'near me' || !data.extracted_location) {
+                    findParking();
+                } else {
+                    findParkingForLocation(data.extracted_location);
+                }
+            }
         } else {
-            // Defaults to standard GPS behavior if no location is typed
-            findParking();
+            addBotMessage("I'm having trouble connecting to my brain. Please try again!");
         }
-    } else if (query.includes('hi') || query.includes('hello')) {
-        addBotMessage("Hello! I'm ParkSmart. Ask me to 'find parking' to get started! 👋");
-    } else {
-        addBotMessage("I'm not sure I understand. Try asking 'Find parking near Central Park' or 'Find parking near me'!");
+    } catch (error) {
+        console.error("Chat Error:", error);
+        addBotMessage("Oops! Something went wrong on my end.");
     }
 });
 
